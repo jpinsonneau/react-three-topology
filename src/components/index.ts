@@ -1,1 +1,1 @@
-export { TopologyCanvas } from './topology-canvas';
+export * from './topology-canvas';

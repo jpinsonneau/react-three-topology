@@ -8,44 +8,17 @@ import {
 import { Canvas, MeshProps, useFrame } from '@react-three/fiber';
 import * as React from 'react';
 import { Euler, Vector3 } from 'three';
-
-export type ThreeDItem = {
-  name: string;
-  type?: string;
-  color?: string;
-  namespace?: string;
-  parent?: ThreeDItem;
-  children: ThreeDItem[];
-};
-
-export type ThreeDEdge = {
-  from: ThreeDItem;
-  to: ThreeDItem;
-  size: number;
-};
-
-export type Options = {
-  edges?: boolean;
-  resourceHTML?: boolean;
-}
-
-export function flatten(items: ThreeDItem[]) {
-  let flattened: ThreeDItem[] = [];
-  flattened = flattened.concat(items);
-  items.forEach(i => {
-    flattened = flattened.concat(flatten(i.children));
-  });
-  return flattened;
-}
+import { Item, Edge, Options } from '../models';
+import { flatten } from '../utils';
 
 const NodeSpacer = 20;
 
 export const TopologyCanvas: React.FC<{
   allNamespaces: string[];
-  externals: ThreeDItem[];
-  services: ThreeDItem[];
-  nodes: ThreeDItem[];
-  edges: ThreeDEdge[];
+  externals: Item[];
+  services: Item[];
+  nodes: Item[];
+  edges: Edge[];
   options: Options;
 }> = ({
   allNamespaces,
@@ -113,7 +86,7 @@ export const TopologyCanvas: React.FC<{
       );
     }
 
-    function servicePosition(service: ThreeDItem) {
+    function servicePosition(service: Item) {
       const filteredServices = services.filter(svc => svc.namespace === service.namespace);
       const filteredSqrt = Math.ceil(Math.sqrt(filteredServices.length));
       const serviceIndex = filteredServices.indexOf(service);
@@ -124,7 +97,7 @@ export const TopologyCanvas: React.FC<{
       );
     }
 
-    function getPosition(item: ThreeDItem) {
+    function getPosition(item: Item) {
       if (!item.type) {
         return externalPosition(externals.indexOf(item));
       } else {
