@@ -324,7 +324,7 @@ export const TopologyCanvas: React.FC<{
           );
         })}
         {items.map((item, i) => (
-          <Item key={`item-${i}`} type={item.type} position={getPosition(item)} name={item.name} />
+          <Item key={`item-${i}`} type={item.type} position={getPosition(item)} name={item.name} color={item.color} />
         ))}
         {options.edges &&
           edges.map((e, o) => {
