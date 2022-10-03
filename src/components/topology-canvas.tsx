@@ -28,10 +28,38 @@ export const TopologyCanvas: React.FC<{
   edges,
   options
 }) => {
+    const nodesWithParents = setParents(nodes);
     allNamespaces = allNamespaces.sort((a, b) => a.localeCompare(b));
-    const nodeSqrt = Math.ceil(Math.sqrt(nodes.length));
+    const nodeSqrt = Math.ceil(Math.sqrt(nodesWithParents.length));
     const maxSize = Math.max(...edges.map(e => e.size));
-    const items = flatten(nodes).concat(services).concat(externals);
+    const items = setPositions(flatten(nodesWithParents).concat(services).concat(externals)).filter(i => i.position);
+    edges.forEach(e => {
+      const from = items.find(i => i.name === e.from.name && i.namespace === e.from.namespace);
+      if (from) {
+        e.from = from;
+      }
+
+      const to = items.find(i => i.name === e.to.name && i.namespace === e.to.namespace);
+      if (to) {
+        e.to = to;
+      }
+    })
+
+    function setParents(items: Item[], parent?: Item) {
+      items.forEach((i: Item) => {
+        i.parent = parent;
+        console.log("setParent", i, parent);
+        i.children = i.children ? setParents(i.children, i) : [];
+      });
+      return items;
+    }
+
+    function setPositions(items: Item[]) {
+      items.forEach((i: Item) => {
+        i.position = getPosition(i);
+      });
+      return items;
+    }
 
     function nodePosition(i: number) {
       return new Vector3(
@@ -98,23 +126,36 @@ export const TopologyCanvas: React.FC<{
     }
 
     function getPosition(item: Item) {
+      console.log("getPosition", item.type, item);
       if (!item.type) {
         return externalPosition(externals.indexOf(item));
       } else {
         switch (item.type) {
           case 'Node':
-            return nodePosition(nodes.indexOf(item)).add(new Vector3(0, 1, 0));
+            return nodePosition(nodesWithParents.indexOf(item)).add(new Vector3(0, 1, 0));
           case 'Namespace':
-            return namespacePosition(nodes.indexOf(item.parent!), item.name).add(new Vector3(0, -0.6, 0));
+            const nNode = item.parent
+
+            if (!nNode) {
+              console.error("can't get position of namespace", item);
+              return undefined;
+            }
+
+            return namespacePosition(nodesWithParents.indexOf(nNode!), item.name).add(new Vector3(0, -0.6, 0));
           case 'Pod':
-            const pNode = item.parent!.parent!.parent!;
-            const pNamespace = item.parent!.parent!;
-            const pOwner = item.parent!;
+            const pNode = item.parent?.parent?.parent!;
+            const pNamespace = item.parent?.parent;
+            const pOwner = item.parent;
+
+            if (!pNode || !pNamespace || !pOwner) {
+              console.error("can't get position of pod", item);
+              return undefined;
+            }
+
             const pOwnerSqrt = Math.ceil(Math.sqrt(item.parent!.parent!.children.length));
             const pResourceSqrt = Math.ceil(Math.sqrt(item.parent!.children.length));
-
             return resourcePosition(
-              nodes.indexOf(pNode),
+              nodesWithParents.indexOf(pNode),
               pNamespace.name,
               pNamespace.children.indexOf(pOwner),
               pOwnerSqrt,
@@ -124,10 +165,17 @@ export const TopologyCanvas: React.FC<{
           case 'Service':
             return servicePosition(item);
           default:
-            const oNodeIndex = nodes.indexOf(item.parent!.parent!);
+            const oNode = item.parent?.parent
             const oNamespace = item.parent;
-            const ownerIndex = item.parent!.children.indexOf(item);
-            const ownerSqrt = Math.ceil(Math.sqrt(item.parent!.children.length));
+
+            if (!oNode || !oNamespace) {
+              console.error("can't get position of owner", item);
+              return undefined;
+            }
+
+            const oNodeIndex = nodesWithParents.indexOf(oNode);
+            const ownerIndex = oNamespace!.children.indexOf(item);
+            const ownerSqrt = Math.ceil(Math.sqrt(oNamespace!.children.length));
             return ownerPosition(oNodeIndex, oNamespace!.name, ownerIndex, ownerSqrt);
         }
       }
@@ -297,7 +345,7 @@ export const TopologyCanvas: React.FC<{
     }
 
     return (
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [50, allNamespaces.length / 2, 50] }}>
+      <Canvas id="topology-canvas" shadows dpr={[1, 2]} camera={{ position: [50, allNamespaces.length / 2, 50] }}>
         <OrbitControls makeDefault rotateSpeed={2} minPolarAngle={0} maxPolarAngle={Math.PI / 2.5} />
 
         <pointLight color="white" />
@@ -327,9 +375,9 @@ export const TopologyCanvas: React.FC<{
           <Item key={`item-${i}`} type={item.type} position={getPosition(item)} name={item.name} color={item.color} />
         ))}
         {options.edges &&
-          edges.map((e, o) => {
-            const start = getPosition(e.from);
-            const end = getPosition(e.to);
+          edges.filter(e => e.from.position && e.to.position).map((e, o) => {
+            const start = e.from.position!;
+            const end = e.to.position!;
             const startParam = getItemParams(e.from.type);
             const endParam = getItemParams(e.to.type);
             const midA = new Vector3(0, start.y, 0);
