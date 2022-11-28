@@ -37,6 +37,14 @@
   }
 }
 
+.root.light {
+  background-color: #F0F0F0;
+}
+
+.root.dark {
+  background-color: #202035;
+}
+
 #topology-canvas {
   height: 96vh !important;
 }
