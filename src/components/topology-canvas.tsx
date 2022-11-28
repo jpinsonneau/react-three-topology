@@ -86,7 +86,7 @@ export const TopologyCanvas: React.FC<{
       return new Vector3(
         (i % nodeSqrt) * NodeSpacer - (nodeSqrt / 4) * NodeSpacer,
         0,
-        Math.ceil((i + 1) / nodeSqrt) * NodeSpacer - (nodeSqrt * NodeSpacer * 3) / 4 + 2
+        Math.ceil((i + 1) / nodeSqrt) * NodeSpacer - ((nodes.length / nodeSqrt) * NodeSpacer * 3) / 4 + 2
       );
     }
 
@@ -130,7 +130,7 @@ export const TopologyCanvas: React.FC<{
     function externalPosition(i: number) {
       return new Vector3(
         2 * nodeSqrt * NodeSpacer * Math.cos((2 * i * Math.PI) / externals.length),
-        10,
+        1,
         2 * nodeSqrt * NodeSpacer * Math.sin((2 * i * Math.PI) / externals.length)
       );
     }
@@ -163,17 +163,17 @@ export const TopologyCanvas: React.FC<{
 
             return new Vector3().copy(namespacePosition(nodesWithParents.indexOf(nNode!), item.name)).add(new Vector3(0, -0.6, 0));
           case 'Pod':
-            const pNode = item.parent?.parent?.parent!;
-            const pNamespace = item.parent?.parent;
             const pOwner = item.parent;
+            const pNamespace = pOwner?.parent;
+            const pNode = pNamespace?.parent;
 
             if (!pNode || !pNamespace || !pOwner) {
               console.error("can't get position of pod", item);
               return undefined;
             }
 
-            const pOwnerSqrt = Math.ceil(Math.sqrt(item.parent!.parent!.children.length));
-            const pResourceSqrt = Math.ceil(Math.sqrt(item.parent!.children.length));
+            const pOwnerSqrt = Math.ceil(Math.sqrt(pNamespace!.children.length));
+            const pResourceSqrt = Math.ceil(Math.sqrt(pOwner!.children.length));
             return resourcePosition(
               nodesWithParents.indexOf(pNode),
               pNamespace.name,
@@ -185,8 +185,8 @@ export const TopologyCanvas: React.FC<{
           case 'Service':
             return servicePosition(item);
           default:
-            const oNode = item.parent?.parent
             const oNamespace = item.parent;
+            const oNode = oNamespace?.parent
 
             if (!oNode || !oNamespace) {
               console.error("can't get position of owner", item);
@@ -248,7 +248,7 @@ export const TopologyCanvas: React.FC<{
           <planeGeometry args={[500, 500]} />
           <MeshReflectorMaterial
             blur={[10, 10]}
-            mixBlur={1}
+            mixBlur={0}
             mixStrength={1}
             mixContrast={1}
             metalness={1}
@@ -326,9 +326,8 @@ export const TopologyCanvas: React.FC<{
                 <div
                   onMouseEnter={event => hover(true)}
                   onMouseLeave={event => hover(false)}
-                  className={`three-d-text-content ${isDark ? 'dark' : 'light'}`}
+                  className={`three-d-text-content ${isDark ? 'dark' : 'light'} ${hovered ? 'hovered' : ''}`}
                   style={{
-                    background: hovered ? '#2b9af3' : '#202035',
                     marginLeft: `${params.marginLeft}em`
                   }}
                 >
@@ -381,7 +380,7 @@ export const TopologyCanvas: React.FC<{
         <Ground />
         {allNamespaces.map((namespace, i) => {
           const pos = namespacePosition(-1, namespace);
-          const halfWidth = (nodeSqrt * NodeSpacer) / 2;
+          const halfWidth = (nodeSqrt * NodeSpacer) / 2 + NodeSpacer;
           return (
             <Line
               key={`floor-${i}`}
