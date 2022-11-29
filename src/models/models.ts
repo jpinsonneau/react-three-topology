@@ -1,3 +1,5 @@
+import { Vector3 } from "three";
+
 export type Item = {
   name: string;
   type?: string;
@@ -5,6 +7,7 @@ export type Item = {
   namespace?: string;
   parent?: Item;
   children: Item[];
+  position?: Vector3;
 };
 
 export type Edge = {
